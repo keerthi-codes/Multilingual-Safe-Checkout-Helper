@@ -8,88 +8,251 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="css/style.css">
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen font-sans antialiased">
-    <div class="max-w-6xl mx-auto px-4 py-8">
+<body class="bg-slate-950 text-slate-100 min-h-screen font-sans antialiased selection:bg-indigo-500 selection:text-white">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+        
         <!-- Header Section -->
-        <header class="flex flex-col md:flex-row md:items-center md:justify-between pb-6 mb-8 border-b border-slate-800 gap-4">
+        <header class="flex flex-col md:flex-row md:items-center md:justify-between pb-6 mb-6 border-b border-slate-800 gap-4">
             <div>
                 <div class="flex items-center gap-3">
                     <span class="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-indigo-500/10 text-indigo-400 ring-1 ring-indigo-500/30">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path>
                         </svg>
                     </span>
-                    <h1 class="text-2xl font-bold text-white tracking-tight">Multilingual Safe-Checkout Helper</h1>
+                    <div>
+                        <h1 class="text-2xl font-bold text-white tracking-tight">Multilingual Safe-Checkout Helper</h1>
+                        <p class="text-slate-400 text-xs sm:text-sm mt-0.5">AI-assisted multilingual shopping with deterministic policy enforcement and secure PayPal Sandbox checkout.</p>
+                    </div>
                 </div>
-                <p class="text-slate-400 text-sm mt-1">AI-assisted multilingual shopping with deterministic policy enforcement and secure approval.</p>
             </div>
-            <div class="flex flex-wrap items-center gap-3 text-xs">
-                <span class="px-3 py-1.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-mono">
-                    AI: Multilingual (EN/ES/FR)
+
+            <!-- Architecture & Environment Badges -->
+            <div class="flex flex-wrap items-center gap-2 text-xs">
+                <span class="px-2.5 py-1 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-mono">
+                    AI: EN · ES · FR
                 </span>
-                <span class="px-3 py-1.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono flex items-center gap-2">
-                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span class="px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono flex items-center gap-1.5">
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
                     Policy Engine Active
+                </span>
+                <span class="px-2.5 py-1 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 font-mono">
+                    SQLite Persistence
+                </span>
+                <span class="px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 font-mono">
+                    PayPal Sandbox (INR/USD)
                 </span>
             </div>
         </header>
 
-        <!-- AI Assistant & Spending Mandate Section -->
-        <section class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-            <!-- Spending Mandate Controller Card -->
-            <div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl flex flex-col justify-between">
+        <!-- Global Alert / Notification Banner -->
+        <div id="notification-banner" class="hidden mb-6 p-4 rounded-xl border flex items-start justify-between gap-3 text-xs" role="alert">
+            <div class="flex items-start gap-3">
+                <span id="notification-icon" class="text-base mt-0.5">ℹ️</span>
                 <div>
+                    <h2 id="notification-title" class="font-semibold text-sm">Notification</h2>
+                    <p id="notification-message" class="mt-1 text-slate-300 leading-relaxed"></p>
+                    <div id="notification-actions" class="mt-2 flex gap-2"></div>
+                </div>
+            </div>
+            <button id="notification-close-btn" type="button" class="text-slate-400 hover:text-white p-1 rounded transition" aria-label="Dismiss notification">
+                ✕
+            </button>
+        </div>
+
+        <!-- Navigation Tabs / Section Jumps -->
+        <nav class="flex items-center gap-2 mb-8 overflow-x-auto pb-2 border-b border-slate-800/80 text-xs font-medium" aria-label="Primary Navigation">
+            <a href="#catalogue-section" class="px-3.5 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 transition flex items-center gap-1.5 whitespace-nowrap">
+                <span>🛍️</span> Product Catalogue
+            </a>
+            <a href="#ai-section" class="px-3.5 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 transition flex items-center gap-1.5 whitespace-nowrap">
+                <span>💬</span> Multilingual Assistant
+            </a>
+            <a href="#mandate-section" class="px-3.5 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 transition flex items-center gap-1.5 whitespace-nowrap">
+                <span>🛡️</span> Spending Mandate
+            </a>
+            <a href="#checkout-flow-panel" class="px-3.5 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 transition flex items-center gap-1.5 whitespace-nowrap">
+                <span>💳</span> Checkout & Verification
+            </a>
+        </nav>
+
+        <!-- Top Section: Spending Mandate & AI Assistant -->
+        <section class="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-10">
+            
+            <!-- Spending Mandate Controller Card (4 cols) -->
+            <div id="mandate-section" class="lg:col-span-5 bg-slate-900 border border-slate-800 p-5 rounded-2xl flex flex-col justify-between shadow-sm">
+                <div>
+                    <!-- Card Header -->
                     <div class="flex items-center justify-between mb-3">
                         <h2 class="text-sm font-semibold text-white uppercase tracking-wider flex items-center gap-2">
-                            <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
                             </svg>
-                            Active Spending Mandate
+                            Spending Mandate
                         </h2>
-                        <span id="mandate-status-pill" class="px-2 py-0.5 rounded text-[10px] font-mono bg-slate-800 text-slate-400">NO MANDATE</span>
+                        <span id="mandate-status-pill" class="px-2 py-0.5 rounded text-[10px] font-mono bg-slate-800 text-slate-400 font-semibold border border-slate-700">NO MANDATE</span>
                     </div>
+
                     <p class="text-xs text-slate-400 mb-4 leading-relaxed">
-                        Deterministic spending rules enforce budget limits. The AI cannot exceed this mandate.
+                        Deterministic spending rules enforce budget limits. The AI and checkout cannot exceed this mandate.
                     </p>
-                    <div class="space-y-3 text-xs font-mono">
-                        <div class="flex justify-between p-2 rounded bg-slate-950/80 border border-slate-800">
+
+                    <!-- Mandate Status Details View -->
+                    <div class="space-y-2.5 text-xs font-mono mb-4">
+                        <div class="flex justify-between items-center p-2 rounded-lg bg-slate-950/80 border border-slate-800">
                             <span class="text-slate-500">Mandate ID:</span>
-                            <span id="mandate-id-display" class="text-slate-300 font-semibold truncate max-w-[150px]">None</span>
+                            <span id="mandate-id-display" class="text-slate-300 font-semibold truncate max-w-[170px]" title="No active mandate">None</span>
                         </div>
-                        <div class="flex justify-between p-2 rounded bg-slate-950/80 border border-slate-800">
+                        <div class="flex justify-between items-center p-2 rounded-lg bg-slate-950/80 border border-slate-800">
                             <span class="text-slate-500">Max Budget:</span>
-                            <span id="mandate-budget-display" class="text-emerald-400 font-semibold">₹0.00 INR</span>
+                            <span id="mandate-budget-display" class="text-emerald-400 font-bold">₹0.00 INR</span>
                         </div>
-                        <div class="flex justify-between p-2 rounded bg-slate-950/80 border border-slate-800">
-                            <span class="text-slate-500">Categories:</span>
-                            <span id="mandate-categories-display" class="text-slate-300">None</span>
+                        <div class="flex justify-between items-center p-2 rounded-lg bg-slate-950/80 border border-slate-800">
+                            <span class="text-slate-500">Permitted Categories:</span>
+                            <span id="mandate-categories-display" class="text-slate-300 text-right truncate max-w-[180px]" title="No permitted categories">None</span>
+                        </div>
+                        <div class="flex justify-between items-center p-2 rounded-lg bg-slate-950/80 border border-slate-800">
+                            <span class="text-slate-500">Max Quantity:</span>
+                            <span id="mandate-max-qty-display" class="text-slate-300 font-semibold">-</span>
+                        </div>
+                        <div class="flex justify-between items-center p-2 rounded-lg bg-slate-950/80 border border-slate-800">
+                            <span class="text-slate-500">Expires:</span>
+                            <span id="mandate-expiry-display" class="text-slate-400 text-right truncate max-w-[180px]">-</span>
                         </div>
                     </div>
-                </div>
-                <div class="pt-4 mt-4 border-t border-slate-800/80 flex gap-2">
-                    <button 
-                        id="quick-mandate-btn" 
-                        type="button" 
-                        class="w-full px-3 py-2 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 rounded-lg text-xs font-medium transition"
-                    >
-                        Setup Demo Mandate (₹5,000 Electronics & Books)
-                    </button>
+
+                    <!-- Mandate Action Bar -->
+                    <div class="flex flex-wrap gap-2 pt-2 border-t border-slate-800/80">
+                        <button 
+                            id="quick-mandate-btn" 
+                            type="button" 
+                            class="flex-1 min-w-[140px] px-3 py-2 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 rounded-lg text-xs font-medium transition"
+                        >
+                            Quick Demo (₹5,000)
+                        </button>
+                        <button 
+                            id="custom-mandate-toggle-btn" 
+                            type="button" 
+                            class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-xs font-medium transition"
+                        >
+                            Configure Custom ⚙️
+                        </button>
+                        <button 
+                            id="mandate-refresh-btn" 
+                            type="button" 
+                            class="px-2.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white border border-slate-700 rounded-lg text-xs transition" 
+                            title="Refresh Mandate Status"
+                            aria-label="Refresh Mandate Status"
+                        >
+                            🔄
+                        </button>
+                        <button 
+                            id="mandate-revoke-btn" 
+                            type="button" 
+                            class="hidden px-2.5 py-2 bg-red-950/30 hover:bg-red-900/40 text-red-400 border border-red-800/40 rounded-lg text-xs transition" 
+                            title="Revoke Mandate"
+                            aria-label="Revoke Mandate"
+                        >
+                            Revoke ✕
+                        </button>
+                    </div>
+
+                    <!-- Custom Mandate Configuration Form (Toggleable) -->
+                    <div id="custom-mandate-panel" class="hidden mt-4 pt-4 border-t border-slate-800">
+                        <h3 class="text-xs font-semibold text-slate-200 uppercase tracking-wider mb-3">Custom Mandate Rules</h3>
+                        <form id="custom-mandate-form" class="space-y-3 text-xs">
+                            <div>
+                                <label for="mandate-amount-input" class="block text-slate-400 mb-1">Max Budget (INR):</label>
+                                <div class="relative">
+                                    <span class="absolute left-2.5 top-2 text-slate-500 font-mono">₹</span>
+                                    <input 
+                                        type="number" 
+                                        id="mandate-amount-input" 
+                                        step="100" 
+                                        min="1" 
+                                        value="5000" 
+                                        required 
+                                        class="w-full pl-7 pr-3 py-1.5 bg-slate-950 border border-slate-700 rounded-lg text-slate-200 font-mono focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                                    >
+                                </div>
+                            </div>
+
+                            <div>
+                                <div class="flex items-center justify-between mb-1">
+                                    <label class="text-slate-400">Permitted Categories:</label>
+                                    <button type="button" id="mandate-category-select-all" class="text-[11px] text-indigo-400 hover:underline">Select All</button>
+                                </div>
+                                <div id="mandate-categories-container" class="grid grid-cols-2 gap-1.5 p-2 bg-slate-950 rounded-lg border border-slate-800 max-h-32 overflow-y-auto">
+                                    <!-- Populated dynamically via JS -->
+                                    <span class="text-slate-500 text-[11px]">Loading categories...</span>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label for="mandate-quantity-input" class="block text-slate-400 mb-1">Max Items Qty:</label>
+                                    <input 
+                                        type="number" 
+                                        id="mandate-quantity-input" 
+                                        min="1" 
+                                        max="10" 
+                                        value="2" 
+                                        required 
+                                        class="w-full px-2.5 py-1.5 bg-slate-950 border border-slate-700 rounded-lg text-slate-200 font-mono focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                                    >
+                                </div>
+                                <div>
+                                    <label for="mandate-expiry-select" class="block text-slate-400 mb-1">Validity Window:</label>
+                                    <select 
+                                        id="mandate-expiry-select" 
+                                        class="w-full px-2.5 py-1.5 bg-slate-950 border border-slate-700 rounded-lg text-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                                    >
+                                        <option value="3600">1 Hour (3,600s)</option>
+                                        <option value="7200" selected>2 Hours (7,200s)</option>
+                                        <option value="86400">24 Hours (1 Day)</option>
+                                        <option value="604800">7 Days</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div id="mandate-form-error" class="hidden text-[11px] p-2 rounded bg-red-950/40 text-red-300 border border-red-800/40"></div>
+
+                            <div class="flex gap-2 pt-1">
+                                <button 
+                                    type="submit" 
+                                    id="create-mandate-submit-btn" 
+                                    class="flex-1 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-medium rounded-lg transition"
+                                >
+                                    Establish Mandate
+                                </button>
+                                <button 
+                                    type="button" 
+                                    id="custom-mandate-cancel-btn" 
+                                    class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition"
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
             </div>
 
-            <!-- AI Assistant Chat Panel -->
-            <div class="lg:col-span-2 bg-slate-900 border border-slate-800 p-5 rounded-2xl flex flex-col h-[400px]">
-                <div class="flex items-center justify-between pb-3 border-b border-slate-800 mb-3">
+            <!-- AI Assistant Chat Panel (7 cols) -->
+            <div id="ai-section" class="lg:col-span-7 bg-slate-900 border border-slate-800 p-5 rounded-2xl flex flex-col h-[520px] shadow-sm">
+                <!-- Chat Header -->
+                <div class="flex items-center justify-between pb-3 border-b border-slate-800 mb-2">
                     <div class="flex items-center gap-2">
                         <div class="w-2.5 h-2.5 rounded-full bg-indigo-500 animate-pulse"></div>
-                        <h2 class="text-sm font-semibold text-white">Multilingual Assistant</h2>
+                        <h2 class="text-sm font-semibold text-white">Multilingual Shopping Assistant</h2>
                     </div>
+                    
                     <!-- Language Switcher -->
-                    <div class="flex items-center gap-1.5">
-                        <label for="ai-language-select" class="text-[11px] text-slate-400">Language:</label>
+                    <div class="flex items-center gap-2">
+                        <label for="ai-language-select" class="text-xs text-slate-400">Language:</label>
                         <select 
                             id="ai-language-select" 
-                            class="px-2 py-1 bg-slate-950 border border-slate-700 rounded text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                            class="px-2.5 py-1 bg-slate-950 border border-slate-700 rounded-lg text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                         >
                             <option value="en">English (en)</option>
                             <option value="es">Español (es)</option>
@@ -98,10 +261,24 @@
                     </div>
                 </div>
 
+                <!-- Quick Prompts Toolbar -->
+                <div class="flex items-center gap-1.5 overflow-x-auto py-1 mb-2 text-[11px] text-slate-400 no-scrollbar">
+                    <span class="text-slate-500 font-mono text-[10px] shrink-0">Try:</span>
+                    <button type="button" class="quick-prompt-btn px-2.5 py-0.5 rounded-full bg-slate-800/80 hover:bg-indigo-600/30 hover:text-indigo-200 border border-slate-700/60 shrink-0 transition" data-lang="en" data-prompt="Can you recommend headphones under ₹3,000 in English?">
+                        🎧 Headphones under ₹3,000
+                    </button>
+                    <button type="button" class="quick-prompt-btn px-2.5 py-0.5 rounded-full bg-slate-800/80 hover:bg-indigo-600/30 hover:text-indigo-200 border border-slate-700/60 shrink-0 transition" data-lang="es" data-prompt="¿Qué libros de programación me recomiendas?">
+                        📚 Libros de programación (ES)
+                    </button>
+                    <button type="button" class="quick-prompt-btn px-2.5 py-0.5 rounded-full bg-slate-800/80 hover:bg-indigo-600/30 hover:text-indigo-200 border border-slate-700/60 shrink-0 transition" data-lang="fr" data-prompt="Quels accessoires recommandez-vous pour un ordinateur portable?">
+                        💼 Accessoires ordinateur (FR)
+                    </button>
+                </div>
+
                 <!-- Chat Feed -->
-                <div id="ai-chat-feed" class="flex-1 overflow-y-auto space-y-3 pr-1 text-xs">
-                    <div class="p-3 rounded-xl bg-slate-800/60 border border-slate-700/50 text-slate-300 leading-relaxed">
-                        Hello! I am your Multilingual Shopping Assistant. Ask me about products in our demo catalogue in English, Spanish, or French. When you select a product, the backend policy engine will verify your spending mandate.
+                <div id="ai-chat-feed" class="flex-1 overflow-y-auto space-y-3 pr-1 text-xs" tabindex="0" aria-label="Conversation history">
+                    <div class="p-3.5 rounded-xl bg-slate-800/60 border border-slate-700/50 text-slate-300 leading-relaxed">
+                        Hello! I am your Multilingual Shopping Assistant. Ask me about products in our catalogue in English, Spanish, or French. When a recommendation is made, the backend deterministic policy engine verifies your spending mandate before any purchase approval.
                     </div>
                 </div>
 
@@ -111,96 +288,257 @@
                         type="text" 
                         id="ai-chat-input" 
                         placeholder="Ask about headphones, keyboards, books in English, Spanish, or French..." 
-                        class="flex-1 px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        class="flex-1 px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition disabled:opacity-50"
+                        aria-label="Chat query input"
                     >
                     <button 
                         type="submit" 
                         id="ai-send-btn" 
-                        class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-medium rounded-lg text-xs transition disabled:opacity-50"
+                        class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-medium rounded-lg text-xs transition disabled:opacity-50 flex items-center gap-1.5"
                     >
-                        Send
+                        <span>Send</span>
                     </button>
                 </form>
             </div>
         </section>
 
-        <!-- Filters & Search Toolbar -->
-        <section class="bg-slate-900/80 border border-slate-800 p-4 rounded-xl mb-8 backdrop-blur shadow-sm">
-            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-                <!-- Search Input -->
-                <div>
-                    <label for="search-input" class="block text-xs font-medium text-slate-400 mb-1">Search Catalogue</label>
-                    <input 
-                        type="text" 
-                        id="search-input" 
-                        placeholder="Search by name or keywords..." 
-                        class="w-full px-3 py-2 bg-slate-950 border border-slate-700/80 rounded-lg text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
-                    >
+        <!-- Active Proposal & PayPal Checkout Dashboard (Shown when active) -->
+        <section id="checkout-flow-panel" class="hidden mb-10 bg-slate-900 border border-indigo-500/40 p-6 rounded-2xl shadow-lg">
+            <div class="flex items-center justify-between pb-4 mb-4 border-b border-slate-800">
+                <div class="flex items-center gap-3">
+                    <span class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-indigo-500/20 text-indigo-400">
+                        💳
+                    </span>
+                    <div>
+                        <h2 class="text-base font-bold text-white tracking-tight">Active Purchase Proposal & PayPal Checkout</h2>
+                        <p class="text-xs text-slate-400">Deterministic policy validation, cryptographic approval, and PayPal Sandbox dual-currency execution.</p>
+                    </div>
                 </div>
+                <button id="close-checkout-panel-btn" type="button" class="text-slate-400 hover:text-white text-xs px-2.5 py-1 rounded bg-slate-800 border border-slate-700 transition">
+                    Minimize ✕
+                </button>
+            </div>
 
-                <!-- Category Filter -->
-                <div>
-                    <label for="category-filter" class="block text-xs font-medium text-slate-400 mb-1">Category</label>
-                    <select 
-                        id="category-filter" 
-                        class="w-full px-3 py-2 bg-slate-950 border border-slate-700/80 rounded-lg text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
-                    >
-                        <option value="">All Categories</option>
-                    </select>
-                </div>
-
-                <!-- Availability Filter -->
-                <div>
-                    <label for="availability-filter" class="block text-xs font-medium text-slate-400 mb-1">Availability</label>
-                    <select 
-                        id="availability-filter" 
-                        class="w-full px-3 py-2 bg-slate-950 border border-slate-700/80 rounded-lg text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
-                    >
-                        <option value="">All Items</option>
-                        <option value="true">In Stock Only</option>
-                        <option value="false">Out of Stock</option>
-                    </select>
-                </div>
-
-                <!-- Actions / Reset -->
-                <div class="flex items-end">
-                    <button 
-                        id="reset-filters" 
-                        type="button" 
-                        class="w-full px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg text-sm font-medium border border-slate-700 transition"
-                    >
-                        Reset Filters
-                    </button>
-                </div>
+            <div id="checkout-panel-content" class="space-y-4">
+                <!-- Dynamically rendered via main.js -->
             </div>
         </section>
 
-        <!-- Status Messaging Containers -->
-        <div id="loading-state" class="py-16 text-center">
-            <div class="inline-block w-8 h-8 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin mb-4"></div>
-            <p class="text-slate-400 text-sm">Loading product catalogue...</p>
-        </div>
+        <!-- Catalogue Section Header & Filters -->
+        <section id="catalogue-section" class="scroll-mt-6">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-3 mb-4 border-b border-slate-800/80 gap-2">
+                <div>
+                    <h2 class="text-lg font-bold text-white tracking-tight">Product Catalogue</h2>
+                    <p class="text-xs text-slate-400">Browse verified products priced in INR. Select any item to evaluate against your spending mandate.</p>
+                </div>
+                <div class="text-xs text-slate-400 font-mono">
+                    <span id="catalogue-count">0 items loaded</span>
+                </div>
+            </div>
 
-        <div id="error-state" class="hidden py-12 px-6 bg-red-950/20 border border-red-900/40 rounded-xl text-center max-w-lg mx-auto">
-            <p class="text-red-400 font-semibold mb-1">Unable to load products</p>
-            <p id="error-detail" class="text-red-300/80 text-xs mb-4">Could not connect to the catalogue service.</p>
-            <button id="retry-button" class="px-4 py-1.5 bg-red-900/40 hover:bg-red-800/40 text-red-200 rounded-lg text-xs font-medium transition">
-                Retry Connection
-            </button>
-        </div>
+            <!-- Filters & Search Toolbar -->
+            <div class="bg-slate-900/90 border border-slate-800 p-4 rounded-xl mb-6 backdrop-blur shadow-sm">
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                    <!-- Search Input -->
+                    <div>
+                        <label for="search-input" class="block text-xs font-medium text-slate-400 mb-1">Search Products</label>
+                        <input 
+                            type="text" 
+                            id="search-input" 
+                            placeholder="Name, keywords, description..." 
+                            class="w-full px-3 py-2 bg-slate-950 border border-slate-700/80 rounded-lg text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
+                        >
+                    </div>
 
-        <div id="empty-state" class="hidden py-16 text-center bg-slate-900/40 border border-slate-800/60 rounded-xl">
-            <svg class="w-12 h-12 text-slate-600 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-            </svg>
-            <p class="text-slate-300 font-medium">No products found</p>
-            <p class="text-slate-500 text-xs mt-1">Try adjusting your keyword search or category filter.</p>
-        </div>
+                    <!-- Category Filter -->
+                    <div>
+                        <label for="category-filter" class="block text-xs font-medium text-slate-400 mb-1">Category</label>
+                        <select 
+                            id="category-filter" 
+                            class="w-full px-3 py-2 bg-slate-950 border border-slate-700/80 rounded-lg text-xs text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
+                        >
+                            <option value="">All Categories</option>
+                        </select>
+                    </div>
 
-        <!-- Products Grid Container -->
-        <main id="products-grid" class="hidden grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            <!-- Dynamically populated safely via main.js using textContent -->
-        </main>
+                    <!-- Availability Filter -->
+                    <div>
+                        <label for="availability-filter" class="block text-xs font-medium text-slate-400 mb-1">Stock Availability</label>
+                        <select 
+                            id="availability-filter" 
+                            class="w-full px-3 py-2 bg-slate-950 border border-slate-700/80 rounded-lg text-xs text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
+                        >
+                            <option value="">All Stock States</option>
+                            <option value="true">In Stock Only</option>
+                            <option value="false">Out of Stock</option>
+                        </select>
+                    </div>
+
+                    <!-- Actions / Reset -->
+                    <div class="flex items-end">
+                        <button 
+                            id="reset-filters" 
+                            type="button" 
+                            class="w-full px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg text-xs font-medium border border-slate-700 transition"
+                        >
+                            Reset Filters
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Status Messaging Containers -->
+            <div id="loading-state" class="py-16 text-center">
+                <div class="inline-block w-8 h-8 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin mb-4" role="status" aria-label="Loading"></div>
+                <p class="text-slate-400 text-xs">Loading product catalogue from backend service...</p>
+            </div>
+
+            <div id="error-state" class="hidden py-12 px-6 bg-red-950/20 border border-red-900/40 rounded-xl text-center max-w-lg mx-auto">
+                <p class="text-red-400 font-semibold mb-1 text-sm">Unable to load catalogue products</p>
+                <p id="error-detail" class="text-red-300/80 text-xs mb-4">Could not connect to the catalogue service.</p>
+                <button id="retry-button" class="px-4 py-1.5 bg-red-900/40 hover:bg-red-800/40 text-red-200 rounded-lg text-xs font-medium transition">
+                    Retry Connection
+                </button>
+            </div>
+
+            <div id="empty-state" class="hidden py-16 text-center bg-slate-900/40 border border-slate-800/60 rounded-xl">
+                <svg class="w-12 h-12 text-slate-600 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <p class="text-slate-300 font-medium text-sm">No products found</p>
+                <p class="text-slate-500 text-xs mt-1">Try adjusting your keyword search or category filter.</p>
+            </div>
+
+            <!-- Products Grid Container -->
+            <main id="products-grid" class="hidden grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+                <!-- Dynamically populated safely via main.js using DOM APIs & textContent -->
+            </main>
+        </section>
+
+        <!-- Footer Section -->
+        <footer class="pt-8 pb-12 border-t border-slate-800 text-center text-xs text-slate-500 space-y-2">
+            <p>Multilingual Safe-Checkout Helper · End-to-End Shopping Experience</p>
+            <p class="text-[11px] text-slate-600">Deterministic Policy Engine · Memory-Only Approval Secrets · Authoritative Backend Calculations · PayPal Sandbox Demo</p>
+        </footer>
+    </div>
+
+    <!-- Purchase Proposal & Evaluation Modal -->
+    <div id="proposal-modal" class="hidden fixed inset-0 z-50 overflow-y-auto" role="dialog" aria-modal="true" aria-labelledby="proposal-modal-title">
+        <!-- Backdrop -->
+        <div id="proposal-modal-backdrop" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm transition-opacity"></div>
+
+        <div class="flex min-h-full items-center justify-center p-4">
+            <div class="relative w-full max-w-lg bg-slate-900 border border-slate-700 rounded-2xl p-6 shadow-2xl text-xs space-y-4">
+                
+                <!-- Modal Header -->
+                <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+                    <h3 id="proposal-modal-title" class="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                        <span>🛡️</span> Purchase Proposal & Policy Evaluation
+                    </h3>
+                    <button id="proposal-modal-close-btn" type="button" class="text-slate-400 hover:text-white p-1 rounded transition" aria-label="Close dialog">
+                        ✕
+                    </button>
+                </div>
+
+                <!-- Product Summary Box -->
+                <div class="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <span id="modal-product-category" class="px-2 py-0.5 rounded text-[10px] font-mono bg-indigo-500/20 text-indigo-300">Category</span>
+                            <h4 id="modal-product-name" class="text-sm font-semibold text-white mt-1 leading-snug">Product Name</h4>
+                        </div>
+                        <span id="modal-product-unit-price" class="text-emerald-400 font-bold font-mono text-sm">₹0.00</span>
+                    </div>
+                    <p id="modal-product-desc" class="text-slate-400 text-[11px] leading-relaxed"></p>
+                </div>
+
+                <!-- Quantity & Authoritative Subtotal Stepper -->
+                <div class="flex items-center justify-between p-3 rounded-xl bg-slate-950/80 border border-slate-800">
+                    <div>
+                        <label for="modal-qty-input" class="block text-slate-400 text-[11px]">Quantity:</label>
+                        <div class="flex items-center gap-2 mt-1">
+                            <button type="button" id="modal-qty-minus" class="w-7 h-7 rounded bg-slate-800 hover:bg-slate-700 text-white font-bold transition flex items-center justify-center">-</button>
+                            <input 
+                                type="number" 
+                                id="modal-qty-input" 
+                                min="1" 
+                                max="10" 
+                                value="1" 
+                                class="w-12 text-center py-1 bg-slate-900 border border-slate-700 rounded text-slate-200 font-mono focus:outline-none"
+                            >
+                            <button type="button" id="modal-qty-plus" class="w-7 h-7 rounded bg-slate-800 hover:bg-slate-700 text-white font-bold transition flex items-center justify-center">+</button>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <span class="block text-slate-400 text-[11px]">Estimated Total (INR):</span>
+                        <span id="modal-estimated-total" class="text-white font-bold font-mono text-base">₹0.00</span>
+                    </div>
+                </div>
+
+                <!-- Active Mandate Verification Notice -->
+                <div id="modal-mandate-notice" class="p-2.5 rounded-lg text-[11px] bg-slate-950 border border-slate-800 text-slate-400 flex items-center justify-between">
+                    <span>Active Mandate: <strong id="modal-mandate-id-label" class="text-slate-300">Checking...</strong></span>
+                    <span id="modal-mandate-budget-label" class="text-emerald-400 font-mono">₹0.00</span>
+                </div>
+
+                <!-- Step 1: Evaluate Action -->
+                <div id="modal-eval-action-box">
+                    <button 
+                        type="button" 
+                        id="modal-evaluate-btn" 
+                        class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-xl transition shadow flex items-center justify-center gap-2"
+                    >
+                        <span>Evaluate Against Spending Mandate</span>
+                    </button>
+                </div>
+
+                <!-- Step 2: Evaluation Result Box (Dynamic) -->
+                <div id="modal-eval-result-box" class="hidden space-y-3">
+                    <!-- Policy Decision Banner -->
+                    <div id="modal-policy-banner" class="p-3 rounded-xl border space-y-1">
+                        <div class="flex items-center justify-between">
+                            <span class="font-bold uppercase tracking-wider text-[11px]" id="modal-decision-label">POLICY DECISION</span>
+                            <span id="modal-reason-code" class="px-2 py-0.5 rounded text-[10px] font-mono">CODE</span>
+                        </div>
+                        <p id="modal-reason-message" class="text-[11px] leading-relaxed"></p>
+                    </div>
+
+                    <!-- Server Authoritative Total Box -->
+                    <div id="modal-authoritative-box" class="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1 font-mono text-[11px]">
+                        <div class="flex justify-between text-slate-400">
+                            <span>Authoritative Total:</span>
+                            <span id="modal-authoritative-total" class="text-white font-bold text-xs">₹0.00 INR</span>
+                        </div>
+                        <div class="flex justify-between text-slate-500 text-[10px]">
+                            <span>Proposal ID:</span>
+                            <span id="modal-proposal-id" class="truncate max-w-[200px]">-</span>
+                        </div>
+                    </div>
+
+                    <!-- Step 3: Explicit User Approval (One-Time Secret) -->
+                    <div id="modal-approval-box" class="hidden space-y-2">
+                        <div class="p-2.5 rounded-lg bg-emerald-950/20 border border-emerald-500/30 text-emerald-300/90 text-[11px] leading-relaxed">
+                            🔒 <strong>Security Policy Enforced:</strong> Policy passed. Explicit confirmation required. Raw approval secret is retained strictly in frontend memory and will not be stored in persistent storage.
+                        </div>
+                        <button 
+                            type="button" 
+                            id="modal-approve-btn" 
+                            class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl transition shadow"
+                        >
+                            Explicitly Approve Purchase (One-Time)
+                        </button>
+                    </div>
+
+                    <!-- Step 4: PayPal Checkout Trigger & Status -->
+                    <div id="modal-checkout-stage" class="hidden space-y-3 pt-2 border-t border-slate-800">
+                        <div id="modal-checkout-container" class="space-y-3">
+                            <!-- Populated dynamically via main.js -->
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
     </div>
 
     <script src="js/main.js"></script>

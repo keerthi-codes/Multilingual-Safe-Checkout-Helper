@@ -5,6 +5,7 @@ from decimal import Decimal
 import hashlib
 import hmac
 import secrets
+import sqlite3
 from typing import Callable, Optional
 import uuid
 
@@ -62,16 +63,18 @@ class PolicyService:
         )
         return self.repository.save_mandate(mandate)
 
-    def get_mandate(self, mandate_id: str) -> Optional[SpendingMandate]:
+    def get_mandate(
+        self, mandate_id: str, conn: Optional[sqlite3.Connection] = None
+    ) -> Optional[SpendingMandate]:
         """Retrieve a mandate and update status if it has expired."""
-        mandate = self.repository.get_mandate(mandate_id)
+        mandate = self.repository.get_mandate(mandate_id, conn=conn)
         if mandate is None:
             return None
 
         now = self.clock()
         if mandate.status == MandateStatus.ACTIVE and mandate.expires_at <= now:
             expired_mandate = mandate.model_copy(update={"status": MandateStatus.EXPIRED})
-            return self.repository.update_mandate(expired_mandate)
+            return self.repository.update_mandate(expired_mandate, conn=conn)
 
         return mandate
 
@@ -298,128 +301,220 @@ class PolicyService:
             evaluated_at=now,
         )
 
-    def get_proposal(self, proposal_id: str) -> Optional[PurchaseProposal]:
+    def get_proposal(
+        self, proposal_id: str, conn: Optional[sqlite3.Connection] = None
+    ) -> Optional[PurchaseProposal]:
         """Retrieve a purchase proposal by its unique ID."""
-        return self.repository.get_proposal(proposal_id)
+        return self.repository.get_proposal(proposal_id, conn=conn)
 
     def approve_proposal(self, proposal_id: str, approval_secret: str) -> PurchaseProposal:
-        """Explicitly approve a pending proposal and consume the associated mandate.
+        """Explicitly approve a pending proposal and atomically reserve the associated mandate.
 
-        Enforces replay protection and secret validation:
-        - Only a proposal in PENDING_APPROVAL status can be approved.
+        Enforces atomic state transitions and replay protection:
+        - Executes inside an SQLite immediate transaction.
         - Validates the proposal-specific approval secret using constant-time comparison.
-        - The associated mandate must still be ACTIVE and unexpired.
-        - Approving immediately transitions the mandate to CONSUMED.
+        - The associated mandate must still be ACTIVE, unexpired, and unreserved.
+        - Concurrently competing approvals for the same mandate roll back cleanly.
         """
         if not approval_secret or not isinstance(approval_secret, str):
             raise ValueError("Valid approval_secret must be provided to approve this proposal.")
 
-        proposal = self.repository.get_proposal(proposal_id)
-        if proposal is None:
-            raise ValueError(f"Proposal '{proposal_id}' was not found.")
-
-        # Ensure proposal is currently PENDING_APPROVAL
-        if proposal.status != ProposalStatus.PENDING_APPROVAL:
-            raise ValueError(f"Proposal cannot be approved in its current state '{proposal.status}'.")
-
-        # Cryptographic approval secret verification (constant-time)
-        computed_hash = hashlib.sha256(approval_secret.strip().encode("utf-8")).hexdigest()
-        if not proposal.approval_secret_hash or not hmac.compare_digest(proposal.approval_secret_hash, computed_hash):
-            raise ValueError("Invalid approval secret provided for proposal.")
-
-        mandate = self.get_mandate(proposal.mandate_id)
-        if mandate is None:
-            raise ValueError(f"Mandate '{proposal.mandate_id}' associated with proposal not found.")
-
-        if mandate.status != MandateStatus.ACTIVE:
-            raise ValueError(f"Mandate cannot be consumed because its status is '{mandate.status}'.")
-
         now = self.clock()
-        if mandate.expires_at <= now:
-            raise ValueError("Mandate has expired and cannot be approved.")
 
-        # Update proposal state
-        approved_proposal = proposal.model_copy(
-            update={
-                "status": ProposalStatus.USER_APPROVED,
-                "is_user_approved": True,
-                "user_approved_at": now,
-            }
-        )
-        self.repository.update_proposal(approved_proposal)
+        with self.repository.db.transaction() as conn:
+            proposal = self.get_proposal(proposal_id, conn=conn)
+            if proposal is None:
+                raise ValueError(f"Proposal '{proposal_id}' was not found.")
 
-        # Reserve the mandate (held for payment) instead of consuming immediately
-        reserved_mandate = mandate.model_copy(
-            update={
-                "status": MandateStatus.RESERVED,
-                "reserved_by_proposal_id": approved_proposal.id,
-            }
-        )
-        self.repository.update_mandate(reserved_mandate)
+            # Ensure proposal is currently PENDING_APPROVAL
+            if proposal.status != ProposalStatus.PENDING_APPROVAL:
+                raise ValueError(f"Proposal cannot be approved in its current state '{proposal.status}'.")
 
-        return approved_proposal
+            # Cryptographic approval secret verification (constant-time)
+            computed_hash = hashlib.sha256(approval_secret.strip().encode("utf-8")).hexdigest()
+            if not proposal.approval_secret_hash or not hmac.compare_digest(
+                proposal.approval_secret_hash, computed_hash
+            ):
+                raise ValueError("Invalid approval secret provided for proposal.")
 
-    def finalize_mandate_consumed(self, mandate_id: str, proposal_id: str) -> tuple[SpendingMandate, PurchaseProposal]:
+            mandate = self.get_mandate(proposal.mandate_id, conn=conn)
+            if mandate is None:
+                raise ValueError(f"Mandate '{proposal.mandate_id}' associated with proposal not found.")
+
+            if mandate.status != MandateStatus.ACTIVE:
+                raise ValueError(f"Mandate cannot be consumed because its status is '{mandate.status}'.")
+
+            if mandate.expires_at <= now:
+                raise ValueError("Mandate has expired and cannot be approved.")
+
+            # Guarded atomic proposal transition to USER_APPROVED
+            cur_prop = conn.execute(
+                "UPDATE purchase_proposals SET status = ?, is_user_approved = 1, user_approved_at = ? "
+                "WHERE id = ? AND status = ?;",
+                (
+                    ProposalStatus.USER_APPROVED.value,
+                    now.isoformat(),
+                    proposal.id,
+                    ProposalStatus.PENDING_APPROVAL.value,
+                ),
+            )
+            if cur_prop.rowcount == 0:
+                raise ValueError(f"Proposal cannot be approved in its current state '{proposal.status}'.")
+
+            # Guarded atomic mandate reservation (prevents concurrent double-reservation)
+            cur_man = conn.execute(
+                "UPDATE spending_mandates SET status = ?, reserved_by_proposal_id = ? "
+                "WHERE id = ? AND status = ? AND reserved_by_proposal_id IS NULL;",
+                (
+                    MandateStatus.RESERVED.value,
+                    proposal.id,
+                    mandate.id,
+                    MandateStatus.ACTIVE.value,
+                ),
+            )
+            if cur_man.rowcount == 0:
+                raise ValueError("Mandate is not available for reservation.")
+
+            approved_proposal = self.get_proposal(proposal_id, conn=conn)
+            if approved_proposal is None:
+                raise ValueError("Failed to retrieve approved proposal record.")
+            return approved_proposal
+
+    def finalize_mandate_consumed(
+        self,
+        mandate_id: str,
+        proposal_id: str,
+        conn: Optional[sqlite3.Connection] = None,
+    ) -> tuple[SpendingMandate, PurchaseProposal]:
         """Finalize a reserved mandate to CONSUMED and proposal to PAID upon verified payment capture."""
-        mandate = self.get_mandate(mandate_id)
-        if mandate is None:
-            raise ValueError(f"Mandate '{mandate_id}' not found.")
+        with self.repository.db.transaction(conn) as active_conn:
+            mandate = self.get_mandate(mandate_id, conn=active_conn)
+            if mandate is None:
+                raise ValueError(f"Mandate '{mandate_id}' not found.")
 
-        proposal = self.get_proposal(proposal_id)
-        if proposal is None:
-            raise ValueError(f"Proposal '{proposal_id}' not found.")
+            proposal = self.get_proposal(proposal_id, conn=active_conn)
+            if proposal is None:
+                raise ValueError(f"Proposal '{proposal_id}' not found.")
 
-        if mandate.status != MandateStatus.RESERVED:
-            raise ValueError(f"Cannot finalize mandate with status '{mandate.status}'; expected RESERVED.")
+            if mandate.status != MandateStatus.RESERVED:
+                raise ValueError(f"Cannot finalize mandate with status '{mandate.status}'; expected RESERVED.")
 
-        if proposal.status != ProposalStatus.USER_APPROVED:
-            raise ValueError(f"Cannot finalize proposal with status '{proposal.status}'; expected USER_APPROVED.")
+            if proposal.status != ProposalStatus.USER_APPROVED:
+                raise ValueError(f"Cannot finalize proposal with status '{proposal.status}'; expected USER_APPROVED.")
 
-        consumed_mandate = mandate.model_copy(
-            update={
-                "status": MandateStatus.CONSUMED,
-                "reserved_by_proposal_id": None,
-                "consumed_by_proposal_id": proposal.id,
-            }
-        )
-        self.repository.update_mandate(consumed_mandate)
+            # Guarded update: transition mandate to CONSUMED
+            cur_man = active_conn.execute(
+                "UPDATE spending_mandates SET status = ?, reserved_by_proposal_id = NULL, consumed_by_proposal_id = ? "
+                "WHERE id = ? AND status = ?;",
+                (
+                    MandateStatus.CONSUMED.value,
+                    proposal.id,
+                    mandate.id,
+                    MandateStatus.RESERVED.value,
+                ),
+            )
+            if cur_man.rowcount == 0:
+                raise ValueError(f"Failed to finalize mandate '{mandate_id}': state conflict.")
 
-        paid_proposal = proposal.model_copy(
-            update={
-                "status": ProposalStatus.PAID,
-            }
-        )
-        self.repository.update_proposal(paid_proposal)
-        return consumed_mandate, paid_proposal
+            # Guarded update: transition proposal to PAID
+            cur_prop = active_conn.execute(
+                "UPDATE purchase_proposals SET status = ? WHERE id = ? AND status = ?;",
+                (
+                    ProposalStatus.PAID.value,
+                    proposal.id,
+                    ProposalStatus.USER_APPROVED.value,
+                ),
+            )
+            if cur_prop.rowcount == 0:
+                raise ValueError(f"Failed to finalize proposal '{proposal_id}': state conflict.")
 
-    def release_mandate_reservation(self, mandate_id: str, proposal_id: str) -> tuple[SpendingMandate, PurchaseProposal]:
+            consumed_mandate = self.get_mandate(mandate_id, conn=active_conn)
+            paid_proposal = self.get_proposal(proposal_id, conn=active_conn)
+            if consumed_mandate is None or paid_proposal is None:
+                raise ValueError("Failed to retrieve updated records after finalization.")
+            return consumed_mandate, paid_proposal
+
+    def release_mandate_reservation(
+        self,
+        mandate_id: str,
+        proposal_id: str,
+        conn: Optional[sqlite3.Connection] = None,
+    ) -> tuple[SpendingMandate, PurchaseProposal]:
         """Release a reserved mandate back to ACTIVE if checkout is cancelled or definitively fails."""
-        mandate = self.get_mandate(mandate_id)
-        if mandate is None:
-            raise ValueError(f"Mandate '{mandate_id}' not found.")
+        with self.repository.db.transaction(conn) as active_conn:
+            mandate = self.get_mandate(mandate_id, conn=active_conn)
+            if mandate is None:
+                raise ValueError(f"Mandate '{mandate_id}' not found.")
 
-        proposal = self.get_proposal(proposal_id)
-        if proposal is None:
-            raise ValueError(f"Proposal '{proposal_id}' not found.")
+            proposal = self.get_proposal(proposal_id, conn=active_conn)
+            if proposal is None:
+                raise ValueError(f"Proposal '{proposal_id}' not found.")
 
-        if mandate.status != MandateStatus.RESERVED:
-            raise ValueError(f"Cannot release mandate with status '{mandate.status}'; expected RESERVED.")
+            if mandate.status != MandateStatus.RESERVED:
+                raise ValueError(f"Cannot release mandate with status '{mandate.status}'; expected RESERVED.")
 
-        active_mandate = mandate.model_copy(
-            update={
-                "status": MandateStatus.ACTIVE,
-                "reserved_by_proposal_id": None,
-            }
-        )
-        self.repository.update_mandate(active_mandate)
+            cur_man = active_conn.execute(
+                "UPDATE spending_mandates SET status = ?, reserved_by_proposal_id = NULL "
+                "WHERE id = ? AND status = ?;",
+                (
+                    MandateStatus.ACTIVE.value,
+                    mandate.id,
+                    MandateStatus.RESERVED.value,
+                ),
+            )
+            if cur_man.rowcount == 0:
+                raise ValueError(f"Failed to release mandate '{mandate_id}': state conflict.")
 
-        cancelled_proposal = proposal.model_copy(
-            update={
-                "status": ProposalStatus.CANCELLED,
-            }
-        )
-        self.repository.update_proposal(cancelled_proposal)
-        return active_mandate, cancelled_proposal
+            cur_prop = active_conn.execute(
+                "UPDATE purchase_proposals SET status = ? WHERE id = ?;",
+                (ProposalStatus.CANCELLED.value, proposal.id),
+            )
+
+            active_mandate = self.get_mandate(mandate_id, conn=active_conn)
+            cancelled_proposal = self.get_proposal(proposal_id, conn=active_conn)
+            if active_mandate is None or cancelled_proposal is None:
+                raise ValueError("Failed to retrieve updated records after release.")
+            return active_mandate, cancelled_proposal
+
+    def expire_mandate_reservation(
+        self,
+        mandate_id: str,
+        proposal_id: Optional[str] = None,
+        conn: Optional[sqlite3.Connection] = None,
+    ) -> tuple[SpendingMandate, Optional[PurchaseProposal]]:
+        """Transition an expired reserved mandate to EXPIRED and cancel any associated pending proposal."""
+        with self.repository.db.transaction(conn) as active_conn:
+            mandate = self.get_mandate(mandate_id, conn=active_conn)
+            if mandate is None:
+                raise ValueError(f"Mandate '{mandate_id}' not found.")
+
+            if mandate.status != MandateStatus.RESERVED:
+                raise ValueError(f"Cannot expire mandate with status '{mandate.status}'; expected RESERVED.")
+
+            cur_man = active_conn.execute(
+                "UPDATE spending_mandates SET status = ?, reserved_by_proposal_id = NULL "
+                "WHERE id = ? AND status = ?;",
+                (
+                    MandateStatus.EXPIRED.value,
+                    mandate.id,
+                    MandateStatus.RESERVED.value,
+                ),
+            )
+            if cur_man.rowcount == 0:
+                raise ValueError(f"Failed to expire mandate '{mandate_id}': state conflict.")
+
+            cancelled_proposal = None
+            if proposal_id:
+                active_conn.execute(
+                    "UPDATE purchase_proposals SET status = ? WHERE id = ?;",
+                    (ProposalStatus.CANCELLED.value, proposal_id),
+                )
+                cancelled_proposal = self.get_proposal(proposal_id, conn=active_conn)
+
+            expired_mandate = self.get_mandate(mandate_id, conn=active_conn)
+            if expired_mandate is None:
+                raise ValueError("Failed to retrieve updated mandate record after expiry.")
+            return expired_mandate, cancelled_proposal
 
 
 # Shared singleton service instance

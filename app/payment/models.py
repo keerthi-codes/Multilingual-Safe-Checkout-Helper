@@ -15,6 +15,49 @@ class PaymentStatus(str, Enum):
     COMPLETED = "COMPLETED"
     FAILED = "FAILED"
     CANCELLED = "CANCELLED"
+    ORDER_CREATION_PENDING = "ORDER_CREATION_PENDING"
+    ORDER_CREATION_UNKNOWN = "ORDER_CREATION_UNKNOWN"
+    CAPTURE_UNKNOWN = "CAPTURE_UNKNOWN"
+
+
+class WebhookEventStatus(str, Enum):
+    """Lifecycle state of a stored webhook event."""
+    RECEIVED = "RECEIVED"
+    PROCESSED = "PROCESSED"
+    FAILED = "FAILED"
+    IGNORED = "IGNORED"
+
+
+class WebhookEventRecord(BaseModel):
+    """Durable record of an ingested PayPal webhook event."""
+
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+
+    id: str = Field(..., description="PayPal event ID.")
+    event_type: str = Field(..., description="PayPal event type name.")
+    order_id: Optional[str] = Field(default=None, description="Associated PayPal order ID if resolved.")
+    capture_id: Optional[str] = Field(default=None, description="Associated PayPal capture ID if resolved.")
+    status: WebhookEventStatus = Field(default=WebhookEventStatus.RECEIVED, description="Event processing status.")
+    payload: str = Field(..., description="Serialized raw event payload.")
+    error_message: Optional[str] = Field(default=None, description="Safe sanitized error description if failed.")
+    received_at: datetime = Field(..., description="Event reception UTC timestamp.")
+    processed_at: Optional[datetime] = Field(default=None, description="Event processing UTC timestamp.")
+
+
+class WebhookProcessResponse(BaseModel):
+    """Outbound confirmation of webhook receipt and processing outcome."""
+
+    model_config = ConfigDict(
+        frozen=True,
+        extra="forbid",
+    )
+
+    status: str = Field(..., description="Processing outcome (e.g., 'processed', 'duplicate', 'ignored').")
+    event_id: str = Field(..., description="PayPal event ID.")
+    event_type: str = Field(..., description="PayPal event type.")
+    message: str = Field(..., description="Human-understandable outcome description.")
 
 
 class CurrencyBreakdown(BaseModel):

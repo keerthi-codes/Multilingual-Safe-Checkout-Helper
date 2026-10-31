@@ -1,21 +1,37 @@
-"""Main entrypoint for the FastAPI application."""
-
+from contextlib import asynccontextmanager
 from pathlib import Path
 from fastapi import FastAPI
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.core.config import settings
+from app.core.database import db_manager
 from app.catalogue.router import router as catalogue_router
 from app.policy.router import router as policy_router
 from app.ai.router import router as ai_router
 from app.payment.router import router as payment_router
+from app.payment.worker import expiry_worker
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Idempotently initialize SQLite schema on application startup
+    db_manager.init_db()
+    if settings.EXPIRY_RECONCILIATION_ENABLED:
+        await expiry_worker.start()
+    try:
+        yield
+    finally:
+        if settings.EXPIRY_RECONCILIATION_ENABLED:
+            await expiry_worker.stop()
+
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
     description="Multilingual Safe-Checkout Helper backend service",
     version="0.1.0",
     debug=settings.DEBUG,
+    lifespan=lifespan,
 )
 
 # Register product catalogue, spending policy, AI assistant, and PayPal payment routers

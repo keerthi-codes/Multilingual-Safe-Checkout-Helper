@@ -21,6 +21,9 @@ class Settings:
     HOST: str = os.getenv("HOST", "127.0.0.1")
     PORT: int = int(os.getenv("PORT", "8000"))
 
+    # Database Configuration (SQLite)
+    SQLITE_DB_PATH: str = os.getenv("SQLITE_DB_PATH", str(BASE_DIR / "data" / "checkout_helper.db"))
+
     # AI Configuration (mock by default for offline / test safety)
     AI_PROVIDER: str = os.getenv("AI_PROVIDER", "mock").lower()
     GEMINI_API_KEY: Optional[str] = os.getenv("GEMINI_API_KEY", None)
@@ -31,6 +34,11 @@ class Settings:
     PAYPAL_CLIENT_ID: Optional[str] = os.getenv("PAYPAL_CLIENT_ID", None)
     PAYPAL_CLIENT_SECRET: Optional[str] = os.getenv("PAYPAL_CLIENT_SECRET", None)
     PAYPAL_SANDBOX_BASE_URL: str = os.getenv("PAYPAL_SANDBOX_BASE_URL", "https://api-m.sandbox.paypal.com")
+    PAYPAL_WEBHOOK_ID: Optional[str] = os.getenv("PAYPAL_WEBHOOK_ID", None)
+
+    # Reconciliation and Expiry Worker Configuration
+    EXPIRY_RECONCILIATION_ENABLED: bool = os.getenv("EXPIRY_RECONCILIATION_ENABLED", "true").lower() in ("true", "1", "t", "yes")
+    RECONCILIATION_INTERVAL_SECONDS: int = int(os.getenv("RECONCILIATION_INTERVAL_SECONDS", "60"))
     
     @property
     def PAYPAL_DEMO_EXCHANGE_RATE_INR_TO_USD(self) -> "Decimal":

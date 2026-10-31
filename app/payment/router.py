@@ -1,6 +1,6 @@
 """FastAPI router for PayPal payment creation, capture verification, and cancellation."""
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 
 from app.payment.models import (
     OrderCaptureResponse,
@@ -8,6 +8,7 @@ from app.payment.models import (
     OrderCreateRequest,
     OrderCreateResponse,
     PaymentOrderRecord,
+    WebhookProcessResponse,
 )
 from app.payment.service import PaymentService, payment_service
 
@@ -108,3 +109,36 @@ def get_payment_order(
         return service.get_order_record(order_id=order_id)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
+
+
+@router.post(
+    "/webhooks",
+    response_model=WebhookProcessResponse,
+    status_code=status.HTTP_200_OK,
+    summary="PayPal Webhook Notification Ingestion",
+    description=(
+        "Ingests official PayPal Sandbox webhook notifications, verifies transmission signatures, "
+        "and durably applies idempotent order and mandate state transitions."
+    ),
+)
+async def handle_paypal_webhook(
+    request: Request,
+    service: PaymentService = Depends(get_payment_service),
+) -> WebhookProcessResponse:
+    """Accept and verify PayPal webhook events."""
+    raw_body = await request.body()
+    headers = dict(request.headers)
+
+    try:
+        return await service.process_webhook_event(headers=headers, raw_body=raw_body)
+    except ValueError as exc:
+        msg = str(exc)
+        if "Missing required PayPal transmission header" in msg or "Malformed webhook" in msg:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=msg)
+        if "Invalid PayPal webhook signature" in msg or "signature verification failed" in msg:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=msg)
+        if "PAYPAL_WEBHOOK_ID is not configured" in msg:
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=msg)
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=msg)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc))

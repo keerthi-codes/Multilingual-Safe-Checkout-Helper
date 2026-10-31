@@ -267,7 +267,8 @@ class GeminiAIProvider(BaseAIProvider):
                 if resp.status_code == 429:
                     raise RuntimeError("Gemini API rate limit exceeded (HTTP 429). Please retry shortly.")
                 if resp.status_code != 200:
-                    raise RuntimeError(f"Gemini API returned error HTTP {resp.status_code}: {resp.text}")
+                    logger.error("Gemini API error HTTP %d: %s", resp.status_code, resp.text)
+                    raise RuntimeError(f"Gemini API returned error HTTP {resp.status_code}.")
 
                 data = resp.json()
                 candidates = data.get("candidates", [])
